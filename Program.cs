@@ -4,7 +4,11 @@ using ImposterGameV3.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents(options =>
+    {
+        options.DetailedErrors = true;
+    });
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<GameService>();
 
