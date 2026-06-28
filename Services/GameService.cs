@@ -167,7 +167,7 @@ public class GameService
         if (micOn.HasValue)
             player.MicOn = micOn.Value;
 
-        NotifyRoomChanged(code);
+        Notify(code);
     }
 }
     public void AddChat(string code, string playerId, string message)
