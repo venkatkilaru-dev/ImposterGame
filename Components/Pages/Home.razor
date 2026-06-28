@@ -2,28 +2,23 @@
 @inject GameService GameService
 @inject NavigationManager Nav
 
-<h1>Imposter Game</h1>
-<p class="muted">Clean version. Create a room, share the code, and find the imposter.</p>
+<h1>Imposter Game V3</h1>
+<p class="muted">Real video/audio with WebRTC, host-only controls, and Enter-to-send chat.</p>
 
 <div class="grid">
     <section class="card">
         <h2>Create room</h2>
-
         <label>Your name</label>
         <input class="input" placeholder="Example: Venkat" @bind="CreateName" />
-
-        <button type="button" class="primary" @onclick="CreateRoom">Create room</button>
+        <button type="button" class="primary" @onclick="CreateRoom">Create room as host</button>
     </section>
 
     <section class="card">
         <h2>Join room</h2>
-
         <label>Your name</label>
         <input class="input" placeholder="Example: Siva" @bind="JoinName" />
-
         <label>Room code</label>
         <input class="input" placeholder="Example: 1234" @bind="RoomCode" />
-
         <button type="button" class="success" @onclick="JoinRoom">Join room</button>
     </section>
 </div>
@@ -42,8 +37,6 @@
     private void CreateRoom()
     {
         ErrorMessage = "";
-        Console.WriteLine("Create room clicked");
-
         if (string.IsNullOrWhiteSpace(CreateName))
         {
             ErrorMessage = "Enter your name first.";
@@ -51,8 +44,7 @@
         }
 
         var room = GameService.CreateRoom();
-        var player = GameService.JoinRoom(room.RoomCode, CreateName);
-
+        var player = GameService.JoinRoom(room.RoomCode, CreateName, true);
         if (player is null)
         {
             ErrorMessage = "Could not create room.";
@@ -65,8 +57,6 @@
     private void JoinRoom()
     {
         ErrorMessage = "";
-        Console.WriteLine("Join room clicked");
-
         if (string.IsNullOrWhiteSpace(JoinName) || string.IsNullOrWhiteSpace(RoomCode))
         {
             ErrorMessage = "Enter name and room code.";
@@ -74,7 +64,6 @@
         }
 
         var player = GameService.JoinRoom(RoomCode.Trim(), JoinName);
-
         if (player is null)
         {
             ErrorMessage = "Room not found or game already started.";

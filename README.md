@@ -1,19 +1,17 @@
-# ImposterGameClean
+# ImposterGameV3
 
-Clean .NET 9 Blazor Server imposter game.
+Features:
+- Real multi-user video/audio using WebRTC
+- SignalR signaling hub
+- Enter key sends chat
+- Host-only start voting, reveal result, and play again
+- Camera and mic turn on together
+- Dockerfile included for Render
 
-## Run from CMD
-
-Extract so this folder exists:
-
-```text
-D:\dotnet\ImposterGameClean
-```
-
-Then run:
+Run:
 
 ```bat
-cd /d D:\dotnet\ImposterGameClean
+cd /d D:\dotnet\ImposterGameV3
 dotnet restore
 dotnet run
 ```
@@ -24,14 +22,8 @@ Open:
 http://localhost:5252
 ```
 
-## Test
-
-1. Open `http://localhost:5252`
-2. Enter your name and create room.
-3. Copy room code.
-4. Open two more browser windows or InPrivate windows.
-5. Join with two more names using same room code.
-6. Start game.
-7. Use chat, camera preview, voting, and reveal result.
-
-Need at least 3 players.
+Testing:
+- Use 3 tabs or 3 devices.
+- Every player must click **Turn on camera + mic**.
+- On localhost, camera works in modern browsers.
+- On Render, HTTPS is required and Render provides HTTPS.

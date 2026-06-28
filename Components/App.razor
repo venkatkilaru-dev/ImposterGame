@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,11 +7,11 @@
     <link rel="stylesheet" href="app.css" />
     <HeadOutlet @rendermode="InteractiveServer" />
 </head>
-
 <body>
     <Routes @rendermode="InteractiveServer" />
-    <script src="media.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.7/signalr.min.js"></script>
+    <script src="webrtc.js"></script>
     <script src="_framework/blazor.web.js"></script>
 </body>
-
 </html>

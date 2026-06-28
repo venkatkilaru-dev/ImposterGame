@@ -6,15 +6,15 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v9.0": {
-      "ImposterGameClean/1.0.0": {
+      "ImposterGameV3/1.0.0": {
         "runtime": {
-          "ImposterGameClean.dll": {}
+          "ImposterGameV3.dll": {}
         }
       }
     }
   },
   "libraries": {
-    "ImposterGameClean/1.0.0": {
+    "ImposterGameV3/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

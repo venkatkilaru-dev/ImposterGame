@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\dotnet\\ImposterGameClean\\ImposterGameClean\\ImposterGameClean.csproj": {}
+    "D:\\dotnet\\ImposterGameV3\\ImposterGameV3\\ImposterGameV3.csproj": {}
   },
   "projects": {
-    "D:\\dotnet\\ImposterGameClean\\ImposterGameClean\\ImposterGameClean.csproj": {
+    "D:\\dotnet\\ImposterGameV3\\ImposterGameV3\\ImposterGameV3.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\dotnet\\ImposterGameClean\\ImposterGameClean\\ImposterGameClean.csproj",
-        "projectName": "ImposterGameClean",
-        "projectPath": "D:\\dotnet\\ImposterGameClean\\ImposterGameClean\\ImposterGameClean.csproj",
+        "projectUniqueName": "D:\\dotnet\\ImposterGameV3\\ImposterGameV3\\ImposterGameV3.csproj",
+        "projectName": "ImposterGameV3",
+        "projectPath": "D:\\dotnet\\ImposterGameV3\\ImposterGameV3\\ImposterGameV3.csproj",
         "packagesPath": "C:\\Users\\HI\\.nuget\\packages\\",
-        "outputPath": "D:\\dotnet\\ImposterGameClean\\ImposterGameClean\\obj\\",
+        "outputPath": "D:\\dotnet\\ImposterGameV3\\ImposterGameV3\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\HI\\AppData\\Roaming\\NuGet\\NuGet.Config"

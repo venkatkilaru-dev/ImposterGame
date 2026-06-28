@@ -1,11 +1,11 @@
-using ImposterGameClean.Components;
-using ImposterGameClean.Services;
+using ImposterGameV3.Components;
+using ImposterGameV3.Hubs;
+using ImposterGameV3.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
-
+builder.Services.AddRazorComponents().AddInteractiveServerComponents();
+builder.Services.AddSignalR();
 builder.Services.AddSingleton<GameService>();
 
 var app = builder.Build();
@@ -19,7 +19,8 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 app.UseAntiforgery();
 
-app.MapRazorComponents<App>()
-    .AddInteractiveServerRenderMode();
+app.MapHub<VideoHub>("/videohub");
+
+app.MapRazorComponents<App>().AddInteractiveServerRenderMode();
 
 app.Run();

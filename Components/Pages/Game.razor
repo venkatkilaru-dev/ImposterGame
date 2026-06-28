@@ -1,5 +1,5 @@
 @page "/game/{RoomCode}/{PlayerId}"
-@implements IDisposable
+@implements IAsyncDisposable
 @inject GameService GameService
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -8,7 +8,6 @@
 {
     <section class="card">
         <h1>Game not found</h1>
-        <p>This room or player does not exist.</p>
         <button type="button" class="primary" @onclick="GoHome">Go home</button>
     </section>
 }
@@ -17,49 +16,43 @@ else
     <div class="room-header">
         <div>
             <h1>Room @Room.RoomCode</h1>
-            <p class="muted">Share this code. You are <b>@CurrentPlayer.Name</b>.</p>
+            <p class="muted">You are <b>@CurrentPlayer.Name</b> @if (CurrentPlayer.IsHost) { <span class="host-label">HOST</span> }</p>
         </div>
         <div class="code-box">@Room.RoomCode</div>
     </div>
 
     <div class="game-layout">
-        <section class="card">
-            <h2>Camera & Mic</h2>
-            <video id="localVideo" autoplay muted playsinline class="video-box"></video>
+        <section class="card wide">
+            <h2>Live video/audio</h2>
 
-            <button type="button" class="primary" @onclick="TurnOnMedia">Turn on camera/mic</button>
-            <button type="button" class="secondary" @onclick="TurnOffMedia">Turn off</button>
+            <div id="videoGrid" class="video-grid">
+                <div class="remote-tile">
+                    <video id="localVideo" autoplay muted playsinline class="video-box"></video>
+                    <div class="tile-footer"><b>@CurrentPlayer.Name (You)</b><span id="localMediaStatus">Off</span></div>
+                </div>
+            </div>
 
-            <p class="small">This clean version shows your own camera preview. Full multi-user WebRTC video can be added after this works.</p>
+            <button type="button" class="primary" @onclick="TurnOnMedia">Turn on camera + mic</button>
+            <button type="button" class="secondary" @onclick="TurnOffMedia">Turn off camera + mic</button>
+
+            @if (!string.IsNullOrWhiteSpace(MediaError))
+            {
+                <div class="error">@MediaError</div>
+            }
         </section>
 
         <section class="card">
             <h2>Players (@Room.Players.Count)</h2>
-
             <div class="players">
                 @foreach (var player in Room.Players)
                 {
                     <div class="player-row">
-                        <span>@player.Name</span>
+                        <span>@player.Name @if (player.IsHost) { <span class="host-label">HOST</span> }</span>
                         <span>
-                            @if (player.CameraOn)
-                            {
-                                <span class="pill">📹</span>
-                            }
-
-                            @if (player.MicOn)
-                            {
-                                <span class="pill">🎤</span>
-                            }
-
-                            @if (Room.GameEnded && player.IsImposter)
-                            {
-                                <b class="badge danger">Imposter</b>
-                            }
-                            else if (player.Id == PlayerId)
-                            {
-                                <b class="badge">You</b>
-                            }
+                            @if (player.CameraOn) { <span class="pill">📹</span> }
+                            @if (player.MicOn) { <span class="pill">🎤</span> }
+                            @if (Room.GameEnded && player.IsImposter) { <b class="badge danger">Imposter</b> }
+                            else if (player.Id == PlayerId) { <b class="badge">You</b> }
                         </span>
                     </div>
                 }
@@ -68,57 +61,64 @@ else
             @if (!Room.GameStarted)
             {
                 <div class="info">Need at least 3 players to start.</div>
-                <button type="button" class="primary" disabled="@(Room.Players.Count < 3)" @onclick="StartGame">Start game</button>
+                @if (CurrentPlayer.IsHost)
+                {
+                    <button type="button" class="primary" disabled="@(Room.Players.Count < 3)" @onclick="StartGame">Start game</button>
+                }
+                else
+                {
+                    <p class="muted">Waiting for host to start.</p>
+                }
             }
         </section>
 
-        <section class="card main-card">
+        <section class="card">
             @if (!Room.GameStarted)
             {
                 <h2>Waiting room</h2>
                 <p>Ask friends to join with code <b>@Room.RoomCode</b>.</p>
-                <p class="muted">This page refreshes live every second.</p>
             }
             else if (!Room.VotingStarted && !Room.GameEnded)
             {
                 <h2>Your role</h2>
-
                 @if (CurrentPlayer.IsImposter)
                 {
-                    <div class="role danger-card">
-                        <h3>You are the IMPOSTER</h3>
-                        <p>Pretend like you know the secret word.</p>
-                    </div>
+                    <div class="role danger-card"><h3>You are the IMPOSTER</h3><p>Pretend like you know the secret word.</p></div>
                 }
                 else
                 {
-                    <div class="role good-card">
-                        <h3>You are NOT the imposter</h3>
-                        <p>Secret word: <b>@Room.SecretWord</b></p>
-                    </div>
+                    <div class="role good-card"><h3>You are NOT the imposter</h3><p>Secret word: <b>@Room.SecretWord</b></p></div>
                 }
 
-                <button type="button" class="warning" @onclick="StartVoting">Start voting</button>
+                @if (CurrentPlayer.IsHost)
+                {
+                    <button type="button" class="warning" @onclick="StartVoting">Start voting</button>
+                }
+                else
+                {
+                    <p class="muted">Only host can start voting.</p>
+                }
             }
             else if (Room.VotingStarted && !Room.GameEnded)
             {
                 <h2>Vote</h2>
-
-                @if (HasVoted)
-                {
-                    <div class="info">You already voted.</div>
-                }
+                @if (CurrentPlayer.HasVoted) { <div class="info">You already voted.</div> }
 
                 <div class="vote-list">
                     @foreach (var player in Room.Players)
                     {
-                        <button type="button" class="vote-button" disabled="@HasVoted" @onclick="() => Vote(player.Id)">
-                            @player.Name
-                        </button>
+                        <button type="button" class="vote-button" disabled="@CurrentPlayer.HasVoted" @onclick="() => Vote(player.Id)">@player.Name</button>
                     }
                 </div>
 
-                <button type="button" class="dark" @onclick="EndGame">Reveal result</button>
+                @if (CurrentPlayer.IsHost)
+                {
+                    <button type="button" class="dark" @onclick="EndGame">Reveal result</button>
+                }
+                else
+                {
+                    <p class="muted">Only room owner can reveal.</p>
+                }
             }
             else
             {
@@ -127,41 +127,37 @@ else
                 var crewWon = votedPlayer is not null && realImposter is not null && votedPlayer.Id == realImposter.Id;
 
                 <h2>Result</h2>
-
                 @if (crewWon)
                 {
-                    <div class="role good-card">
-                        <h3>Crewmates win!</h3>
-                        <p>You found the imposter.</p>
-                    </div>
+                    <div class="role good-card"><h3>Crewmates win!</h3><p>You found the imposter.</p></div>
                 }
                 else
                 {
-                    <div class="role danger-card">
-                        <h3>Imposter wins!</h3>
-                        <p>The imposter escaped.</p>
-                    </div>
+                    <div class="role danger-card"><h3>Imposter wins!</h3><p>The imposter escaped.</p></div>
                 }
 
                 <p>Most voted: <b>@votedPlayer?.Name</b></p>
                 <p>Real imposter: <b>@realImposter?.Name</b></p>
                 <p>Secret word: <b>@Room.SecretWord</b></p>
 
-                <button type="button" class="primary" @onclick="PlayAgain">Play again</button>
+                @if (CurrentPlayer.IsHost)
+                {
+                    <button type="button" class="primary" @onclick="PlayAgain">Play again</button>
+                }
             }
         </section>
 
-        <section class="card chat-card">
+        <section class="card">
             <h2>Chat</h2>
-
             <div class="chat-box">
-                @foreach (var msg in Room.Messages.TakeLast(30))
+                @foreach (var msg in Room.Messages.TakeLast(40))
                 {
                     <div class="chat-line"><b>@msg.PlayerName:</b> @msg.Message</div>
                 }
             </div>
 
-            <input class="input" placeholder="Type message..." @bind="ChatText" @onkeydown="HandleChatKey" />
+            <input class="input" placeholder="Type message and press Enter..."
+                   @bind="ChatText" @bind:event="oninput" @onkeydown="HandleChatKey" />
             <button type="button" class="success" @onclick="SendChat">Send</button>
         </section>
     </div>
@@ -173,107 +169,73 @@ else
 
     private GameRoom? Room;
     private Player? CurrentPlayer;
-    private PeriodicTimer? Timer;
-    private CancellationTokenSource Cts = new();
-    private bool HasVoted;
     private string ChatText = "";
+    private string MediaError = "";
 
     protected override void OnInitialized()
     {
         LoadGame();
-        Timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        _ = RefreshLoop();
+        GameService.RoomChanged += HandleRoomChanged;
     }
 
-  private async Task RefreshLoop()
-{
-    if (Timer is null)
-        return;
-
-    try
+    private void HandleRoomChanged(string changedRoomCode)
     {
-        while (await Timer.WaitForNextTickAsync(Cts.Token))
+        if (changedRoomCode != RoomCode) return;
+
+        _ = InvokeAsync(() =>
         {
-            await InvokeAsync(() =>
-            {
-                LoadGame();
-                StateHasChanged();
-            });
-        }
+            LoadGame();
+            StateHasChanged();
+        });
     }
-    catch (OperationCanceledException)
-    {
-    }
-}    private void LoadGame()
+
+    private void LoadGame()
     {
         Room = GameService.GetRoom(RoomCode);
         CurrentPlayer = Room?.Players.FirstOrDefault(x => x.Id == PlayerId);
-        StateHasChanged();
     }
 
-    private void StartGame()
-    {
-        GameService.StartGame(RoomCode);
-        LoadGame();
-        StateHasChanged();
-    }
-
-    private void StartVoting()
-    {
-        GameService.StartVoting(RoomCode);
-        LoadGame();
-        StateHasChanged();
-    }
-
-    private void Vote(string votedPlayerId)
-    {
-        if (HasVoted)
-            return;
-
-        GameService.Vote(RoomCode, PlayerId, votedPlayerId);
-        HasVoted = true;
-        StateHasChanged();
-        LoadGame();
-
-    }
-
-    private void EndGame()
-    {
-        GameService.EndGame(RoomCode);
-        LoadGame();
-        StateHasChanged();
-    }
-
-    private void PlayAgain()
-    {
-        GameService.ResetAndStart(RoomCode);
-        HasVoted = false;
-        StateHasChanged();
-        LoadGame();
-    }
+    private void StartGame() => GameService.StartGame(RoomCode, PlayerId);
+    private void StartVoting() => GameService.StartVoting(RoomCode, PlayerId);
+    private void Vote(string votedPlayerId) => GameService.Vote(RoomCode, PlayerId, votedPlayerId);
+    private void EndGame() => GameService.EndGame(RoomCode, PlayerId);
+    private void PlayAgain() => GameService.ResetAndStart(RoomCode, PlayerId);
 
     private async Task TurnOnMedia()
     {
-        await JS.InvokeVoidAsync("imposterMedia.startLocalVideo", "localVideo");
-        GameService.SetMedia(RoomCode, PlayerId, true, true);
-        LoadGame();
+        MediaError = "";
+        try
+        {
+            await JS.InvokeVoidAsync("imposterVideo.start", RoomCode, PlayerId, CurrentPlayer!.Name, "localVideo", "videoGrid");
+            GameService.SetMedia(RoomCode, PlayerId, true);
+        }
+        catch (Exception ex)
+        {
+            MediaError = "Camera/mic permission was blocked, dismissed, or not supported.";
+            Console.WriteLine("Camera/mic failed: " + ex.Message);
+            GameService.SetMedia(RoomCode, PlayerId, false);
+        }
     }
 
     private async Task TurnOffMedia()
     {
-        await JS.InvokeVoidAsync("imposterMedia.stopLocalVideo", "localVideo");
-        GameService.SetMedia(RoomCode, PlayerId, false, false);
-        LoadGame();
+        MediaError = "";
+        try
+        {
+            await JS.InvokeVoidAsync("imposterVideo.stop");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("Turn off media failed: " + ex.Message);
+        }
+        GameService.SetMedia(RoomCode, PlayerId, false);
     }
 
     private void SendChat()
     {
-        if (string.IsNullOrWhiteSpace(ChatText))
-            return;
-
+        if (string.IsNullOrWhiteSpace(ChatText)) return;
         GameService.AddChat(RoomCode, PlayerId, ChatText);
         ChatText = "";
-        LoadGame();
     }
 
     private void HandleChatKey(KeyboardEventArgs e)
@@ -282,15 +244,17 @@ else
             SendChat();
     }
 
-    private void GoHome()
-    {
-        Nav.NavigateTo("/");
-    }
+    private void GoHome() => Nav.NavigateTo("/");
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
-        Cts.Cancel();
-        Cts.Dispose();
-        Timer?.Dispose();
+        GameService.RoomChanged -= HandleRoomChanged;
+        try
+        {
+            await JS.InvokeVoidAsync("imposterVideo.stop");
+        }
+        catch
+        {
+        }
     }
 }
