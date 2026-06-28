@@ -10,24 +10,20 @@ window.imposterVideo = {
         this.localVideoId = localVideoId;
         this.videoGridId = videoGridId;
 
-        if (!window.signalR) {
-            throw new Error("SignalR JavaScript client was not loaded.");
-        }
+        if (!window.signalR) throw new Error("SignalR JavaScript client was not loaded.");
 
         const localVideo = document.getElementById(localVideoId);
-        if (!localVideo) {
-            throw new Error("Local video element not found.");
+        if (!localVideo) throw new Error("Local video element not found.");
+
+        try {
+            this.localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        } catch (err) {
+            console.error("getUserMedia failed:", err);
+            alert("Camera/mic failed: " + err.message);
+            throw err;
         }
 
-        this.localStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: true
-        });
-
         localVideo.srcObject = this.localStream;
-
-        const status = document.getElementById("localMediaStatus");
-        if (status) status.innerText = "Camera + mic on";
 
         if (!this.connection) {
             this.connection = new signalR.HubConnectionBuilder()
@@ -55,16 +51,12 @@ window.imposterVideo = {
 
             this.connection.on("ReceiveAnswer", async (fromConnectionId, answer) => {
                 const pc = this.peers[fromConnectionId];
-                if (pc) {
-                    await pc.setRemoteDescription(new RTCSessionDescription(answer));
-                }
+                if (pc) await pc.setRemoteDescription(new RTCSessionDescription(answer));
             });
 
             this.connection.on("ReceiveIceCandidate", async (fromConnectionId, candidate) => {
                 const pc = this.peers[fromConnectionId];
-                if (pc && candidate) {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate));
-                }
+                if (pc && candidate) await pc.addIceCandidate(new RTCIceCandidate(candidate));
             });
 
             this.connection.on("UserLeft", (connectionId) => {
@@ -78,9 +70,7 @@ window.imposterVideo = {
     },
 
     createPeer: async function (connectionId, playerName, makeOffer) {
-        if (this.peers[connectionId]) {
-            return this.peers[connectionId];
-        }
+        if (this.peers[connectionId]) return this.peers[connectionId];
 
         this.names[connectionId] = playerName || "Player";
 
@@ -151,9 +141,7 @@ window.imposterVideo = {
         }
 
         const videoElement = document.getElementById("video-" + connectionId);
-        if (videoElement && videoElement.srcObject !== stream) {
-            videoElement.srcObject = stream;
-        }
+        if (videoElement && videoElement.srcObject !== stream) videoElement.srcObject = stream;
     },
 
     removePeer: function (connectionId) {
@@ -166,50 +154,9 @@ window.imposterVideo = {
         const tile = document.getElementById("tile-" + connectionId);
         if (tile) tile.remove();
     },
-startCamera: function () {
-    if (!this.localStream) return;
 
-    this.localStream.getVideoTracks().forEach(track => {
-        track.enabled = true;
-    });
-},
-
-stopCamera: function () {
-    if (!this.localStream) return;
-
-    this.localStream.getVideoTracks().forEach(track => {
-        track.enabled = false;
-    });
-},
-
-muteMic: function () {
-    if (!this.localStream) return;
-
-    this.localStream.getAudioTracks().forEach(track => {
-        track.enabled = false;
-    });
-},
-
-unmuteMic: function () {
-    if (!this.localStream) return;
-
-    this.localStream.getAudioTracks().forEach(track => {
-        track.enabled = true;
-    });
-},
-
-escapeHtml: function (value) {
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-},
     stop: async function () {
-        for (const connectionId of Object.keys(this.peers)) {
-            this.removePeer(connectionId);
-        }
+        for (const connectionId of Object.keys(this.peers)) this.removePeer(connectionId);
 
         if (this.localStream) {
             this.localStream.getTracks().forEach(track => track.stop());
@@ -219,16 +166,30 @@ escapeHtml: function (value) {
         const localVideo = document.getElementById(this.localVideoId);
         if (localVideo) localVideo.srcObject = null;
 
-        const status = document.getElementById("localMediaStatus");
-        if (status) status.innerText = "Off";
-
         if (this.connection) {
-            try {
-                await this.connection.stop();
-            } catch {
-            }
+            try { await this.connection.stop(); } catch { }
             this.connection = null;
         }
+    },
+
+    startCamera: function () {
+        if (!this.localStream) return;
+        this.localStream.getVideoTracks().forEach(t => t.enabled = true);
+    },
+
+    stopCamera: function () {
+        if (!this.localStream) return;
+        this.localStream.getVideoTracks().forEach(t => t.enabled = false);
+    },
+
+    muteMic: function () {
+        if (!this.localStream) return;
+        this.localStream.getAudioTracks().forEach(t => t.enabled = false);
+    },
+
+    unmuteMic: function () {
+        if (!this.localStream) return;
+        this.localStream.getAudioTracks().forEach(t => t.enabled = true);
     },
 
     escapeHtml: function (value) {
@@ -239,18 +200,11 @@ escapeHtml: function (value) {
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#039;");
     }
-    
 };
+
 window.chatFunctions = {
-
     scrollToBottom: function () {
-
         const chat = document.getElementById("chatBox");
-
-        if (chat) {
-            chat.scrollTop = chat.scrollHeight;
-        }
-
+        if (chat) chat.scrollTop = chat.scrollHeight;
     }
-
 };

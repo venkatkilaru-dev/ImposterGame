@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 
-namespace ImposterGameV3.Hubs;
+namespace ImposterGameFinal.Hubs;
 
 public class VideoUser
 {

@@ -1,6 +1,6 @@
-using ImposterGameV3.Models;
+using ImposterGameFinal.Models;
 
-namespace ImposterGameV3.Services;
+namespace ImposterGameFinal.Services;
 
 public class GameService
 {
@@ -151,25 +151,21 @@ public class GameService
         StartGame(code, playerId);
     }
 
-   public void SetMedia(string code, string playerId, bool? cameraOn = null, bool? micOn = null)
-{
-    lock (_lock)
+    public void SetMedia(string code, string playerId, bool? cameraOn = null, bool? micOn = null)
     {
-        var room = GetRoom(code);
-        var player = room?.Players.FirstOrDefault(x => x.Id == playerId);
+        lock (_lock)
+        {
+            var room = GetRoomUnsafe(code);
+            var player = room?.Players.FirstOrDefault(x => x.Id == playerId);
+            if (room is null || player is null) return;
 
-        if (player == null)
-            return;
+            if (cameraOn.HasValue) player.CameraOn = cameraOn.Value;
+            if (micOn.HasValue) player.MicOn = micOn.Value;
 
-        if (cameraOn.HasValue)
-            player.CameraOn = cameraOn.Value;
-
-        if (micOn.HasValue)
-            player.MicOn = micOn.Value;
-
-        Notify(code);
+            Notify(code);
+        }
     }
-}
+
     public void AddChat(string code, string playerId, string message)
     {
         lock (_lock)

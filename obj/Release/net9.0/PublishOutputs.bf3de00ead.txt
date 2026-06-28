@@ -1,6 +1,0 @@
-D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameV3.exe
-D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\appsettings.json
-D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameV3.dll
-D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameV3.deps.json
-D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameV3.runtimeconfig.json
-D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameV3.pdb

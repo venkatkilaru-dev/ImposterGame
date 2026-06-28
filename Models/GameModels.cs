@@ -1,4 +1,4 @@
-namespace ImposterGameV3.Models;
+namespace ImposterGameFinal.Models;
 
 public class Player
 {

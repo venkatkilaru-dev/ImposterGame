@@ -1,6 +1,6 @@
-using ImposterGameV3.Components;
-using ImposterGameV3.Hubs;
-using ImposterGameV3.Services;
+using ImposterGameFinal.Components;
+using ImposterGameFinal.Hubs;
+using ImposterGameFinal.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,8 +21,6 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStaticFiles();
-app.UseAntiforgery();
-
 app.MapHub<VideoHub>("/videohub");
 
 app.MapRazorComponents<App>().AddInteractiveServerRenderMode();

@@ -24,21 +24,28 @@ else
     <div class="game-layout">
         <section class="card wide">
             <h2>Live video/audio</h2>
-
             <div id="videoGrid" class="video-grid">
                 <div class="remote-tile">
                     <video id="localVideo" autoplay muted playsinline class="video-box"></video>
-                    <div class="tile-footer"><b>@CurrentPlayer.Name (You)</b><span id="localMediaStatus">Off</span></div>
+                    <div class="tile-footer">
+                        <b>@CurrentPlayer.Name (You)</b>
+                        <span>
+                            @if (CurrentPlayer.CameraOn) { <span class="pill">📹</span> }
+                            @if (CurrentPlayer.MicOn) { <span class="pill">🎤</span> }
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <button class="primary" @onclick="ToggleCamera">
-                @(CurrentPlayer.CameraOn ? "Turn Camera Off" : "Turn Camera On")
+            <button type="button" class="primary" @onclick="EnsureMediaStarted">Join video/audio</button>
+            <button type="button" class="secondary" @onclick="ToggleCamera">
+                @(CurrentPlayer.CameraOn ? "Turn camera off" : "Turn camera on")
             </button>
+            <button type="button" class="warning" @onclick="ToggleMic">
+                @(CurrentPlayer.MicOn ? "Mute mic" : "Unmute mic")
+            </button>
+            <button type="button" class="secondary" @onclick="LeaveMedia">Leave video/audio</button>
 
-            <button class="warning" @onclick="ToggleMic">
-                @(CurrentPlayer.MicOn ? "Mute Mic" : "Unmute Mic")
-            </button>
             @if (!string.IsNullOrWhiteSpace(MediaError))
             {
                 <div class="error">@MediaError</div>
@@ -51,20 +58,17 @@ else
                 @foreach (var player in Room.Players)
                 {
                     <div class="player-row">
-                        <span>@player.Name @if (player.IsHost) { <span class="host-label">HOST</span> }</span>
                         <span>
-                            @if (player.HasVoted)
-                            {
-                                <span class="pill voted">✅ Voted</span>
-                            }
-
+                            @player.Name
+                            @if (player.IsHost) { <span class="host-label">HOST</span> }
+                        </span>
+                        <span>
+                            @if (player.HasVoted) { <span class="pill voted">✅ Voted</span> }
                             @if (player.CameraOn) { <span class="pill">📹</span> }
                             @if (player.MicOn) { <span class="pill">🎤</span> }
-
                             @if (Room.GameEnded && player.IsImposter) { <b class="badge danger">Imposter</b> }
                             else if (player.Id == PlayerId) { <b class="badge">You</b> }
                         </span>
-
                     </div>
                 }
             </div>
@@ -161,7 +165,7 @@ else
         <section class="card">
             <h2>Chat</h2>
             <div id="chatBox" class="chat-box">
-                @foreach (var msg in Room.Messages.TakeLast(40))
+                @foreach (var msg in Room.Messages.TakeLast(50))
                 {
                     <div class="chat-line"><b>@msg.PlayerName:</b> @msg.Message</div>
                 }
@@ -182,6 +186,7 @@ else
     private Player? CurrentPlayer;
     private string ChatText = "";
     private string MediaError = "";
+    private bool MediaStarted;
 
     protected override void OnInitialized()
     {
@@ -189,22 +194,18 @@ else
         GameService.RoomChanged += HandleRoomChanged;
     }
 
-   private void HandleRoomChanged(string changedRoomCode)
-{
-    if (changedRoomCode != RoomCode)
-        return;
-
-    _ = InvokeAsync(async () =>
+    private void HandleRoomChanged(string changedRoomCode)
     {
-        LoadGame();
+        if (changedRoomCode != RoomCode) return;
 
-        StateHasChanged();
-
-        await Task.Delay(30);
-
-        await JS.InvokeVoidAsync("chatFunctions.scrollToBottom");
-    });
-}
+        _ = InvokeAsync(async () =>
+        {
+            LoadGame();
+            StateHasChanged();
+            await Task.Delay(50);
+            await JS.InvokeVoidAsync("chatFunctions.scrollToBottom");
+        });
+    }
 
     private void LoadGame()
     {
@@ -218,54 +219,102 @@ else
     private void EndGame() => GameService.EndGame(RoomCode, PlayerId);
     private void PlayAgain() => GameService.ResetAndStart(RoomCode, PlayerId);
 
-    private async Task TurnOnMedia()
+    private async Task EnsureMediaStarted()
     {
         MediaError = "";
         try
         {
-            await JS.InvokeVoidAsync("imposterVideo.start", RoomCode, PlayerId, CurrentPlayer!.Name, "localVideo", "videoGrid");
-            GameService.SetMedia(RoomCode, PlayerId, true);
+            if (!MediaStarted)
+            {
+                await JS.InvokeVoidAsync("imposterVideo.start", RoomCode, PlayerId, CurrentPlayer!.Name, "localVideo", "videoGrid");
+                MediaStarted = true;
+            }
+
+            GameService.SetMedia(RoomCode, PlayerId, cameraOn: true, micOn: true);
         }
         catch (Exception ex)
         {
-            MediaError = "Camera/mic permission was blocked, dismissed, or not supported.";
-            Console.WriteLine("Camera/mic failed: " + ex.Message);
-            GameService.SetMedia(RoomCode, PlayerId, false);
+            MediaError = "Camera/mic failed. Check browser permissions.";
+            Console.WriteLine("Media failed: " + ex.Message);
+            GameService.SetMedia(RoomCode, PlayerId, cameraOn: false, micOn: false);
         }
     }
 
-    private async Task TurnOffMedia()
+    private async Task ToggleCamera()
     {
-        MediaError = "";
+        try
+        {
+            if (!MediaStarted)
+                await EnsureMediaStarted();
+
+            if (CurrentPlayer!.CameraOn)
+            {
+                await JS.InvokeVoidAsync("imposterVideo.stopCamera");
+                GameService.SetMedia(RoomCode, PlayerId, cameraOn: false);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("imposterVideo.startCamera");
+                GameService.SetMedia(RoomCode, PlayerId, cameraOn: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            MediaError = "Camera toggle failed.";
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async Task ToggleMic()
+    {
+        try
+        {
+            if (!MediaStarted)
+                await EnsureMediaStarted();
+
+            if (CurrentPlayer!.MicOn)
+            {
+                await JS.InvokeVoidAsync("imposterVideo.muteMic");
+                GameService.SetMedia(RoomCode, PlayerId, micOn: false);
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("imposterVideo.unmuteMic");
+                GameService.SetMedia(RoomCode, PlayerId, micOn: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            MediaError = "Mic toggle failed.";
+            Console.WriteLine(ex.Message);
+        }
+    }
+
+    private async Task LeaveMedia()
+    {
         try
         {
             await JS.InvokeVoidAsync("imposterVideo.stop");
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine("Turn off media failed: " + ex.Message);
-        }
-        GameService.SetMedia(RoomCode, PlayerId, false);
+        catch { }
+
+        MediaStarted = false;
+        GameService.SetMedia(RoomCode, PlayerId, cameraOn: false, micOn: false);
     }
 
     private async Task SendChat()
-{
-    if (string.IsNullOrWhiteSpace(ChatText))
-        return;
+    {
+        if (string.IsNullOrWhiteSpace(ChatText)) return;
+        GameService.AddChat(RoomCode, PlayerId, ChatText);
+        ChatText = "";
+        await InvokeAsync(StateHasChanged);
+        await JS.InvokeVoidAsync("chatFunctions.scrollToBottom");
+    }
 
-    GameService.AddChat(RoomCode, PlayerId, ChatText);
-
-    ChatText = "";
-
-    await InvokeAsync(StateHasChanged);
-
-    await JS.InvokeVoidAsync("chatFunctions.scrollToBottom");
-}
-
-    private void HandleChatKey(KeyboardEventArgs e)
+    private async Task HandleChatKey(KeyboardEventArgs e)
     {
         if (e.Key == "Enter")
-            SendChat();
+            await SendChat();
     }
 
     private void GoHome() => Nav.NavigateTo("/");
@@ -273,38 +322,6 @@ else
     public async ValueTask DisposeAsync()
     {
         GameService.RoomChanged -= HandleRoomChanged;
-        try
-        {
-            await JS.InvokeVoidAsync("imposterVideo.stop");
-        }
-        catch
-        {
-        }
-    }
-    private async Task ToggleCamera()
-    {
-        if (CurrentPlayer.CameraOn)
-        {
-            await JS.InvokeVoidAsync("imposterVideo.stopCamera");
-            GameService.SetMedia(RoomCode, PlayerId, cameraOn: false);
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("imposterVideo.startCamera");
-            GameService.SetMedia(RoomCode, PlayerId, cameraOn: true);
-        }
-    }
-    private async Task ToggleMic()
-    {
-        if (CurrentPlayer.MicOn)
-        {
-            await JS.InvokeVoidAsync("imposterVideo.muteMic");
-            GameService.SetMedia(RoomCode, PlayerId, micOn: false);
-        }
-        else
-        {
-            await JS.InvokeVoidAsync("imposterVideo.unmuteMic");
-            GameService.SetMedia(RoomCode, PlayerId, micOn: true);
-        }
+        try { await JS.InvokeVoidAsync("imposterVideo.stop"); } catch { }
     }
 }

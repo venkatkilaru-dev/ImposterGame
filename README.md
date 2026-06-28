@@ -1,4 +1,4 @@
-# ImposterGameV3
+# ImposterGameFinal
 
 Features:
 - Real multi-user video/audio using WebRTC
@@ -11,7 +11,7 @@ Features:
 Run:
 
 ```bat
-cd /d D:\dotnet\ImposterGameV3
+cd /d D:\dotnet\ImposterGameFinal
 dotnet restore
 dotnet run
 ```
