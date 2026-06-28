@@ -1,0 +1,86 @@
+@page "/"
+@inject GameService GameService
+@inject NavigationManager Nav
+
+<h1>Imposter Game</h1>
+<p class="muted">Clean version. Create a room, share the code, and find the imposter.</p>
+
+<div class="grid">
+    <section class="card">
+        <h2>Create room</h2>
+
+        <label>Your name</label>
+        <input class="input" placeholder="Example: Venkat" @bind="CreateName" />
+
+        <button type="button" class="primary" @onclick="CreateRoom">Create room</button>
+    </section>
+
+    <section class="card">
+        <h2>Join room</h2>
+
+        <label>Your name</label>
+        <input class="input" placeholder="Example: Siva" @bind="JoinName" />
+
+        <label>Room code</label>
+        <input class="input" placeholder="Example: 1234" @bind="RoomCode" />
+
+        <button type="button" class="success" @onclick="JoinRoom">Join room</button>
+    </section>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(ErrorMessage))
+{
+    <div class="error">@ErrorMessage</div>
+}
+
+@code {
+    private string CreateName = "";
+    private string JoinName = "";
+    private string RoomCode = "";
+    private string ErrorMessage = "";
+
+    private void CreateRoom()
+    {
+        ErrorMessage = "";
+        Console.WriteLine("Create room clicked");
+
+        if (string.IsNullOrWhiteSpace(CreateName))
+        {
+            ErrorMessage = "Enter your name first.";
+            return;
+        }
+
+        var room = GameService.CreateRoom();
+        var player = GameService.JoinRoom(room.RoomCode, CreateName);
+
+        if (player is null)
+        {
+            ErrorMessage = "Could not create room.";
+            return;
+        }
+
+        Nav.NavigateTo($"/game/{room.RoomCode}/{player.Id}");
+    }
+
+    private void JoinRoom()
+    {
+        ErrorMessage = "";
+        Console.WriteLine("Join room clicked");
+
+        if (string.IsNullOrWhiteSpace(JoinName) || string.IsNullOrWhiteSpace(RoomCode))
+        {
+            ErrorMessage = "Enter name and room code.";
+            return;
+        }
+
+        var player = GameService.JoinRoom(RoomCode.Trim(), JoinName);
+
+        if (player is null)
+        {
+            ErrorMessage = "Room not found or game already started.";
+            return;
+        }
+
+        Nav.NavigateTo($"/game/{RoomCode.Trim()}/{player.Id}");
+    }
+}

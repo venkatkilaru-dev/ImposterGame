@@ -1,0 +1,296 @@
+@page "/game/{RoomCode}/{PlayerId}"
+@implements IDisposable
+@inject GameService GameService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+@if (Room is null || CurrentPlayer is null)
+{
+    <section class="card">
+        <h1>Game not found</h1>
+        <p>This room or player does not exist.</p>
+        <button type="button" class="primary" @onclick="GoHome">Go home</button>
+    </section>
+}
+else
+{
+    <div class="room-header">
+        <div>
+            <h1>Room @Room.RoomCode</h1>
+            <p class="muted">Share this code. You are <b>@CurrentPlayer.Name</b>.</p>
+        </div>
+        <div class="code-box">@Room.RoomCode</div>
+    </div>
+
+    <div class="game-layout">
+        <section class="card">
+            <h2>Camera & Mic</h2>
+            <video id="localVideo" autoplay muted playsinline class="video-box"></video>
+
+            <button type="button" class="primary" @onclick="TurnOnMedia">Turn on camera/mic</button>
+            <button type="button" class="secondary" @onclick="TurnOffMedia">Turn off</button>
+
+            <p class="small">This clean version shows your own camera preview. Full multi-user WebRTC video can be added after this works.</p>
+        </section>
+
+        <section class="card">
+            <h2>Players (@Room.Players.Count)</h2>
+
+            <div class="players">
+                @foreach (var player in Room.Players)
+                {
+                    <div class="player-row">
+                        <span>@player.Name</span>
+                        <span>
+                            @if (player.CameraOn)
+                            {
+                                <span class="pill">📹</span>
+                            }
+
+                            @if (player.MicOn)
+                            {
+                                <span class="pill">🎤</span>
+                            }
+
+                            @if (Room.GameEnded && player.IsImposter)
+                            {
+                                <b class="badge danger">Imposter</b>
+                            }
+                            else if (player.Id == PlayerId)
+                            {
+                                <b class="badge">You</b>
+                            }
+                        </span>
+                    </div>
+                }
+            </div>
+
+            @if (!Room.GameStarted)
+            {
+                <div class="info">Need at least 3 players to start.</div>
+                <button type="button" class="primary" disabled="@(Room.Players.Count < 3)" @onclick="StartGame">Start game</button>
+            }
+        </section>
+
+        <section class="card main-card">
+            @if (!Room.GameStarted)
+            {
+                <h2>Waiting room</h2>
+                <p>Ask friends to join with code <b>@Room.RoomCode</b>.</p>
+                <p class="muted">This page refreshes live every second.</p>
+            }
+            else if (!Room.VotingStarted && !Room.GameEnded)
+            {
+                <h2>Your role</h2>
+
+                @if (CurrentPlayer.IsImposter)
+                {
+                    <div class="role danger-card">
+                        <h3>You are the IMPOSTER</h3>
+                        <p>Pretend like you know the secret word.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="role good-card">
+                        <h3>You are NOT the imposter</h3>
+                        <p>Secret word: <b>@Room.SecretWord</b></p>
+                    </div>
+                }
+
+                <button type="button" class="warning" @onclick="StartVoting">Start voting</button>
+            }
+            else if (Room.VotingStarted && !Room.GameEnded)
+            {
+                <h2>Vote</h2>
+
+                @if (HasVoted)
+                {
+                    <div class="info">You already voted.</div>
+                }
+
+                <div class="vote-list">
+                    @foreach (var player in Room.Players)
+                    {
+                        <button type="button" class="vote-button" disabled="@HasVoted" @onclick="() => Vote(player.Id)">
+                            @player.Name
+                        </button>
+                    }
+                </div>
+
+                <button type="button" class="dark" @onclick="EndGame">Reveal result</button>
+            }
+            else
+            {
+                var votedPlayer = Room.Players.OrderByDescending(x => x.Votes).FirstOrDefault();
+                var realImposter = Room.Players.FirstOrDefault(x => x.IsImposter);
+                var crewWon = votedPlayer is not null && realImposter is not null && votedPlayer.Id == realImposter.Id;
+
+                <h2>Result</h2>
+
+                @if (crewWon)
+                {
+                    <div class="role good-card">
+                        <h3>Crewmates win!</h3>
+                        <p>You found the imposter.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="role danger-card">
+                        <h3>Imposter wins!</h3>
+                        <p>The imposter escaped.</p>
+                    </div>
+                }
+
+                <p>Most voted: <b>@votedPlayer?.Name</b></p>
+                <p>Real imposter: <b>@realImposter?.Name</b></p>
+                <p>Secret word: <b>@Room.SecretWord</b></p>
+
+                <button type="button" class="primary" @onclick="PlayAgain">Play again</button>
+            }
+        </section>
+
+        <section class="card chat-card">
+            <h2>Chat</h2>
+
+            <div class="chat-box">
+                @foreach (var msg in Room.Messages.TakeLast(30))
+                {
+                    <div class="chat-line"><b>@msg.PlayerName:</b> @msg.Message</div>
+                }
+            </div>
+
+            <input class="input" placeholder="Type message..." @bind="ChatText" @onkeydown="HandleChatKey" />
+            <button type="button" class="success" @onclick="SendChat">Send</button>
+        </section>
+    </div>
+}
+
+@code {
+    [Parameter] public string RoomCode { get; set; } = "";
+    [Parameter] public string PlayerId { get; set; } = "";
+
+    private GameRoom? Room;
+    private Player? CurrentPlayer;
+    private PeriodicTimer? Timer;
+    private CancellationTokenSource Cts = new();
+    private bool HasVoted;
+    private string ChatText = "";
+
+    protected override void OnInitialized()
+    {
+        LoadGame();
+        Timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _ = RefreshLoop();
+    }
+
+  private async Task RefreshLoop()
+{
+    if (Timer is null)
+        return;
+
+    try
+    {
+        while (await Timer.WaitForNextTickAsync(Cts.Token))
+        {
+            await InvokeAsync(() =>
+            {
+                LoadGame();
+                StateHasChanged();
+            });
+        }
+    }
+    catch (OperationCanceledException)
+    {
+    }
+}    private void LoadGame()
+    {
+        Room = GameService.GetRoom(RoomCode);
+        CurrentPlayer = Room?.Players.FirstOrDefault(x => x.Id == PlayerId);
+        StateHasChanged();
+    }
+
+    private void StartGame()
+    {
+        GameService.StartGame(RoomCode);
+        LoadGame();
+        StateHasChanged();
+    }
+
+    private void StartVoting()
+    {
+        GameService.StartVoting(RoomCode);
+        LoadGame();
+        StateHasChanged();
+    }
+
+    private void Vote(string votedPlayerId)
+    {
+        if (HasVoted)
+            return;
+
+        GameService.Vote(RoomCode, PlayerId, votedPlayerId);
+        HasVoted = true;
+        StateHasChanged();
+        LoadGame();
+
+    }
+
+    private void EndGame()
+    {
+        GameService.EndGame(RoomCode);
+        LoadGame();
+        StateHasChanged();
+    }
+
+    private void PlayAgain()
+    {
+        GameService.ResetAndStart(RoomCode);
+        HasVoted = false;
+        StateHasChanged();
+        LoadGame();
+    }
+
+    private async Task TurnOnMedia()
+    {
+        await JS.InvokeVoidAsync("imposterMedia.startLocalVideo", "localVideo");
+        GameService.SetMedia(RoomCode, PlayerId, true, true);
+        LoadGame();
+    }
+
+    private async Task TurnOffMedia()
+    {
+        await JS.InvokeVoidAsync("imposterMedia.stopLocalVideo", "localVideo");
+        GameService.SetMedia(RoomCode, PlayerId, false, false);
+        LoadGame();
+    }
+
+    private void SendChat()
+    {
+        if (string.IsNullOrWhiteSpace(ChatText))
+            return;
+
+        GameService.AddChat(RoomCode, PlayerId, ChatText);
+        ChatText = "";
+        LoadGame();
+    }
+
+    private void HandleChatKey(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            SendChat();
+    }
+
+    private void GoHome()
+    {
+        Nav.NavigateTo("/");
+    }
+
+    public void Dispose()
+    {
+        Cts.Cancel();
+        Cts.Dispose();
+        Timer?.Dispose();
+    }
+}
