@@ -151,21 +151,25 @@ public class GameService
         StartGame(code, playerId);
     }
 
-    public void SetMedia(string code, string playerId, bool on)
+   public void SetMedia(string code, string playerId, bool? cameraOn = null, bool? micOn = null)
+{
+    lock (_lock)
     {
-        lock (_lock)
-        {
-            var room = GetRoomUnsafe(code);
-            var player = room?.Players.FirstOrDefault(x => x.Id == playerId);
-            if (room is null || player is null) return;
+        var room = GetRoom(code);
+        var player = room?.Players.FirstOrDefault(x => x.Id == playerId);
 
-            player.CameraOn = on;
-            player.MicOn = on;
-            AddSystemMessage(room, $"{player.Name} turned {(on ? "on" : "off")} camera/mic.");
-            Notify(code);
-        }
+        if (player == null)
+            return;
+
+        if (cameraOn.HasValue)
+            player.CameraOn = cameraOn.Value;
+
+        if (micOn.HasValue)
+            player.MicOn = micOn.Value;
+
+        NotifyRoomChanged(code);
     }
-
+}
     public void AddChat(string code, string playerId, string message)
     {
         lock (_lock)

@@ -166,7 +166,46 @@ window.imposterVideo = {
         const tile = document.getElementById("tile-" + connectionId);
         if (tile) tile.remove();
     },
+startCamera: function () {
+    if (!this.localStream) return;
 
+    this.localStream.getVideoTracks().forEach(track => {
+        track.enabled = true;
+    });
+},
+
+stopCamera: function () {
+    if (!this.localStream) return;
+
+    this.localStream.getVideoTracks().forEach(track => {
+        track.enabled = false;
+    });
+},
+
+muteMic: function () {
+    if (!this.localStream) return;
+
+    this.localStream.getAudioTracks().forEach(track => {
+        track.enabled = false;
+    });
+},
+
+unmuteMic: function () {
+    if (!this.localStream) return;
+
+    this.localStream.getAudioTracks().forEach(track => {
+        track.enabled = true;
+    });
+},
+
+escapeHtml: function (value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+},
     stop: async function () {
         for (const connectionId of Object.keys(this.peers)) {
             this.removePeer(connectionId);
@@ -200,4 +239,18 @@ window.imposterVideo = {
             .replaceAll('"', "&quot;")
             .replaceAll("'", "&#039;");
     }
+    
+};
+window.chatFunctions = {
+
+    scrollToBottom: function () {
+
+        const chat = document.getElementById("chatBox");
+
+        if (chat) {
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+    }
+
 };

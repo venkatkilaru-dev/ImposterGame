@@ -32,9 +32,13 @@ else
                 </div>
             </div>
 
-            <button type="button" class="primary" @onclick="TurnOnMedia">Turn on camera + mic</button>
-            <button type="button" class="secondary" @onclick="TurnOffMedia">Turn off camera + mic</button>
+            <button class="primary" @onclick="ToggleCamera">
+                @(CurrentPlayer.CameraOn ? "Turn Camera Off" : "Turn Camera On")
+            </button>
 
+            <button class="warning" @onclick="ToggleMic">
+                @(CurrentPlayer.MicOn ? "Mute Mic" : "Unmute Mic")
+            </button>
             @if (!string.IsNullOrWhiteSpace(MediaError))
             {
                 <div class="error">@MediaError</div>
@@ -49,11 +53,18 @@ else
                     <div class="player-row">
                         <span>@player.Name @if (player.IsHost) { <span class="host-label">HOST</span> }</span>
                         <span>
+                            @if (player.HasVoted)
+                            {
+                                <span class="pill voted">✅ Voted</span>
+                            }
+
                             @if (player.CameraOn) { <span class="pill">📹</span> }
                             @if (player.MicOn) { <span class="pill">🎤</span> }
+
                             @if (Room.GameEnded && player.IsImposter) { <b class="badge danger">Imposter</b> }
                             else if (player.Id == PlayerId) { <b class="badge">You</b> }
                         </span>
+
                     </div>
                 }
             </div>
@@ -149,7 +160,7 @@ else
 
         <section class="card">
             <h2>Chat</h2>
-            <div class="chat-box">
+            <div id="chatBox" class="chat-box">
                 @foreach (var msg in Room.Messages.TakeLast(40))
                 {
                     <div class="chat-line"><b>@msg.PlayerName:</b> @msg.Message</div>
@@ -178,16 +189,22 @@ else
         GameService.RoomChanged += HandleRoomChanged;
     }
 
-    private void HandleRoomChanged(string changedRoomCode)
-    {
-        if (changedRoomCode != RoomCode) return;
+   private void HandleRoomChanged(string changedRoomCode)
+{
+    if (changedRoomCode != RoomCode)
+        return;
 
-        _ = InvokeAsync(() =>
-        {
-            LoadGame();
-            StateHasChanged();
-        });
-    }
+    _ = InvokeAsync(async () =>
+    {
+        LoadGame();
+
+        StateHasChanged();
+
+        await Task.Delay(30);
+
+        await JS.InvokeVoidAsync("chatFunctions.scrollToBottom");
+    });
+}
 
     private void LoadGame()
     {
@@ -231,12 +248,19 @@ else
         GameService.SetMedia(RoomCode, PlayerId, false);
     }
 
-    private void SendChat()
-    {
-        if (string.IsNullOrWhiteSpace(ChatText)) return;
-        GameService.AddChat(RoomCode, PlayerId, ChatText);
-        ChatText = "";
-    }
+    private async Task SendChat()
+{
+    if (string.IsNullOrWhiteSpace(ChatText))
+        return;
+
+    GameService.AddChat(RoomCode, PlayerId, ChatText);
+
+    ChatText = "";
+
+    await InvokeAsync(StateHasChanged);
+
+    await JS.InvokeVoidAsync("chatFunctions.scrollToBottom");
+}
 
     private void HandleChatKey(KeyboardEventArgs e)
     {
@@ -255,6 +279,32 @@ else
         }
         catch
         {
+        }
+    }
+    private async Task ToggleCamera()
+    {
+        if (CurrentPlayer.CameraOn)
+        {
+            await JS.InvokeVoidAsync("imposterVideo.stopCamera");
+            GameService.SetMedia(RoomCode, PlayerId, cameraOn: false);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("imposterVideo.startCamera");
+            GameService.SetMedia(RoomCode, PlayerId, cameraOn: true);
+        }
+    }
+    private async Task ToggleMic()
+    {
+        if (CurrentPlayer.MicOn)
+        {
+            await JS.InvokeVoidAsync("imposterVideo.muteMic");
+            GameService.SetMedia(RoomCode, PlayerId, micOn: false);
+        }
+        else
+        {
+            await JS.InvokeVoidAsync("imposterVideo.unmuteMic");
+            GameService.SetMedia(RoomCode, PlayerId, micOn: true);
         }
     }
 }
