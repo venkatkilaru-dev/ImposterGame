@@ -28,3 +28,8 @@ D:\dotnet\ImposterGameClean\ImposterGameClean\obj\Release\net9.0\refint\Imposter
 D:\dotnet\ImposterGameClean\ImposterGameClean\obj\Release\net9.0\ImposterGameFinal.pdb
 D:\dotnet\ImposterGameClean\ImposterGameClean\obj\Release\net9.0\ImposterGameFinal.genruntimeconfig.cache
 D:\dotnet\ImposterGameClean\ImposterGameClean\obj\Release\net9.0\ref\ImposterGameFinal.dll
+D:\dotnet\ImposterGameClean\ImposterGameClean\bin\Release\net9.0\publish-test\web.config
+D:\dotnet\ImposterGameClean\ImposterGameClean\bin\Release\net9.0\publish-test\appsettings.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\bin\Release\net9.0\publish-test\ImposterGameFinal.deps.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\bin\Release\net9.0\publish-test\ImposterGameFinal.runtimeconfig.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\bin\Release\net9.0\publish-test\ImposterGameFinal.staticwebassets.endpoints.json

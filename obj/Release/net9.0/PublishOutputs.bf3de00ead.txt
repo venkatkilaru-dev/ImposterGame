@@ -1,5 +1,10 @@
 D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameFinal.exe
+D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\publish-test\web.config
 D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\appsettings.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\publish-test\appsettings.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\publish-test\ImposterGameFinal.deps.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\publish-test\ImposterGameFinal.runtimeconfig.json
+D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\publish-test\ImposterGameFinal.staticwebassets.endpoints.json
 D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameFinal.dll
 D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameFinal.deps.json
 D:\dotnet\ImposterGameClean\ImposterGameClean\publish-test\ImposterGameFinal.runtimeconfig.json
